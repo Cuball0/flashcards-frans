@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frans flashcards – Défi 1 &amp; 2</title>
+<style>
+  :root { --bg:#faf7f2; --ink:#222; --muted:#777; --accent:#c4472b; --card:#fff; --line:#e4ddd2; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width: 640px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 1.3rem; margin: 0 0 14px; }
+  .tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  .tabs button { border:1px solid var(--line); background:var(--card); padding:8px 12px; border-radius:999px; font-size:.9rem; cursor:pointer; color:var(--ink); }
+  .tabs button.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .bar { display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:.9rem; margin-bottom:10px; }
+  .bar button { border:none; background:none; color:var(--accent); font-size:.9rem; cursor:pointer; padding:4px 0; }
+  .scene { perspective: 1200px; }
+  .card { position:relative; width:100%; min-height: 300px; cursor:pointer; transform-style:preserve-3d; transition: transform .45s; }
+  .card.flip { transform: rotateY(180deg); }
+  .face { position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; overflow:auto; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+  .back { transform: rotateY(180deg); }
+  .fr { font-size: 1.9rem; font-weight:600; }
+  .nl { font-size: 1.4rem; font-weight:600; color:var(--accent); margin-bottom:16px; }
+  .ex { font-size: 1.05rem; line-height:1.45; color:#444; }
+  .hint { position:absolute; bottom:10px; font-size:.75rem; color:var(--muted); }
+  .nav { display:flex; gap:10px; margin-top:16px; }
+  .nav button { flex:1; padding:14px; font-size:1rem; border-radius:12px; border:1px solid var(--line); background:var(--card); cursor:pointer; }
+  .nav button.flipbtn { background:var(--accent); color:#fff; border-color:var(--accent); flex:2; }
+  .note { font-size:.8rem; color:var(--muted); margin-top:12px; min-height:1em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Frans flashcards</h1>
+  <div class="tabs" id="tabs"></div>
+  <div class="bar"><span id="count"></span><button id="shuffle">Door elkaar husselen</button></div>
+  <div class="scene"><div class="card" id="card" tabindex="0">
+    <div class="face front"><div class="fr" id="fr"></div><div class="hint">tik om om te draaien</div></div>
+    <div class="face back"><div class="nl" id="nl"></div><div class="ex" id="ex"></div></div>
+  </div></div>
+  <div class="nav">
+    <button id="prev">← Vorige</button>
+    <button id="flip" class="flipbtn">Draai</button>
+    <button id="next">Volgende →</button>
+  </div>
+  <div class="note" id="note"></div>
+</main>
+<script>
+const RAW = {
+"Défi 1 · Mission 1": `l’anxiété (f.) | de angst, de ongerustheid | La musique classique peut réduire l’anxiété.
+le bien-être | het welzijn | Notre école organise beaucoup d’activités pour le bien-être des élèves : le yoga, le sport…
+des cuivres (m.) | koperblazers | La trompette et le trombone sont des instruments à vent. Ils font partie du groupe des cuivres.
+un équilibre | een evenwicht | Pour moi, un bon équilibre entre travail et vie privée est très important.
+l’estime de soi (f.) | het zelfvertrouwen | Pendant l’adolescence, il est essentiel pour un jeune de développer son estime de soi.
+une évasion | een ontsnapping, een afleiding | Quand je me perds dans un livre, j’oublie mes problèmes : la lecture, c’est une évasion de la vie quotidienne.
+une folie | een gekheid, een gekte | J’adore le grain de folie dans les chansons d’Angèle.
+un genre musical | een muziekgenre | Je suis fan de tous les genres musicaux, sauf de la musique rap.
+un instrument à cordes | een snaarinstrument | Le violon est un instrument à cordes.
+un instrument à percussion | een slaginstrument | Moi, j’adore la batterie. Mes parents, par contre, sont d’avis que les instruments à percussion ne font que du bruit.
+un instrument à vent | een blaasinstrument | J’aimerais jouer d’un instrument à vent, mais j’hésite entre la flute et la clarinette.
+un mélange | een mix, een mengeling | J’adore ce mélange subtil des différents instruments de musique.
+un morceau | een stuk, een nummer | Les morceaux de musique de Beethoven sont difficiles à jouer.
+une ressource | een hulpbron | La meilleure ressource en cas de problème, c’est d’en parler avec un ami intime.
+la saison estivale | het zomerseizoen | Pendant la saison estivale, j’adore faire des festivals avec des amis : Rock Werchter, Pukkelpop…
+la santé mentale | de mentale, geestelijke gezondheid | Pour être en bonne santé mentale, il faut apprendre à gérer son stress.
+un son | een klank | J’adore le son de ce piano de concert.
+le soutien | de steun, de ondersteuning | J’apprécie énormément le soutien de ma famille. Mes parents et ma sœur, ils sont toujours là pour moi.
+bénéfique | heilzaam | Saviez-vous que le yoga est très bénéfique pour la santé physique et mentale ?
+chimique | chemisch | Quand on est amoureux, le corps produit des substances chimiques qui nous procurent un sentiment de bonheur.
+exaspéré, exaspérée | wanhopig | Je suis exaspéré par son comportement inacceptable. J’en ai assez !
+inégalable | uniek, bijzonder, niet te evenaren | Dans la vie, il faut profiter des moments inégalables.
+moral, morale | moreel | À l’école, on apprend beaucoup de leçons morales, par exemple qu’on doit toujours être poli.
+temporaire | tijdelijk | Le bonheur et le malheur sont des états temporaires, qui peuvent changer selon les circonstances.
+vestimentaire | kleding- | Les prescriptions vestimentaires changent tout le temps. Il faut bien suivre la mode pour être au courant.
+concilier | verzoenen | Il est difficile de trouver le bon équilibre entre l’école et le temps libre. Pourtant, il faut essayer de concilier les deux.
+engendrer | veroorzaken | Les soucis engendrent beaucoup de stress. Il faut se vider la tête de temps en temps. (indicatif présent)
+enrichir | verrijken | Lire des livres, apprendre une autre langue, voyager… ce sont des expériences qui enrichissent la vie. (indicatif présent)
+équilibrer | in evenwicht brengen, op elkaar afstemmen | Il faut apprendre à équilibrer la vie professionnelle et la vie privée.
+influer sur | invloed hebben op | Le style de musique peut influer sur l’apparence d’un individu.
+maintenir | onderhouden | La clé d’une bonne amitié est de maintenir le contact.
+nuire à | schaden | Ces substances toxiques nuisent à la santé. (indicatif présent)
+savourer | genieten van | Maman savoure les petits bonheurs dans la vie : boire une tasse de café le matin ou travailler dans le jardin. (indicatif présent)
+surgir | opduiken, verschijnen | La musique joue un grand rôle dans la vie des gens, vu qu’elle fait surgir beaucoup d’émotions.
+être tendance | in de mode zijn | Ce style de musique est très tendance chez un jeune public. (indicatif présent)
+faire face à | het hoofd bieden aan, trotseren | Dans la vie, il est important de faire face aux problèmes. Si tu les ignores, ils ne font qu’augmenter.
+mettre la pêche | energie geven | Le soleil est là, je me suis bien préparé pour l’école… Aujourd’hui, la musique me met la pêche ! (indicatif présent)
+plonger dans un autre monde | in een andere wereld onderdompelen | La musique peut nous faire plonger dans un autre monde.
+prendre conscience (de) | zich bewust worden (van) | Essaye de prendre conscience de ton bonheur et d’être satisfait de ta vie.
+ranger quelqu’un dans une case | iemand in een hokje plaatsen, duwen | Évite de le ranger dans une case. Tu ne le connais pas encore.
+remonter le moral à quelqu’un | iemand opmonteren | Quand maman se sent triste, je lui remonte toujours le moral en lui préparant un bon plat ! (indicatif présent)
+sortir des sentiers battus | uit zijn comfortzone stappen, afwijken van de geijkte paden | Parfois, il faut sortir des sentiers battus et se lancer dans un nouveau défi !`,
+
+"Défi 1 · Mission 2": `l’acceptation de soi (f.) | de zelfaanvaarding | L’acceptation de soi est un élément indispensable pour être confiant.
+l’amour de soi (m.) | de eigenliefde | L’amour de soi est indispensable pour une bonne santé mentale.
+un compte | een account | Aujourd’hui, je crois que presque tout le monde a un compte Instagram.
+un culte | een verering, een cultus | Est-ce que les hommes aussi sont victimes d’un culte du corps ?
+les diktats de la beauté (m.) | de opgedrongen schoonheidsvoorschriften | De plus en plus d’influenceurs remettent en question les diktats de la beauté.
+un fil | een feed | J’aime bien les photos originales de son fil Instagram.
+un mannequin grande taille | een plus size-model | Dans la publicité, on voit de plus en plus de mannequins grande taille. C’est une bonne évolution !
+un nounours | een teddybeer | Mon frère dort toujours avec le nounours qu’il a reçu à sa naissance.
+une rondeur | een ronding | Beaucoup de gens apprécient que leur partenaire ait des rondeurs.
+le surpoids | het overgewicht | Le surpoids peut causer des problèmes de santé, comme l’obésité.
+accepter | accepteren, aanvaarden | Pour te sentir bien dans ta peau, il faut accepter tes petites imperfections.
+culpabiliser (quelqu’un) | (iemand) een schuldgevoel geven | Arrête de me culpabiliser ! Je fais toujours de mon mieux.
+embrasser | omarmen | Embrasse tes imperfections : tu es génial comme tu es. (impératif)
+prôner | pleiten voor, aanbevelen | Le body positivisme prône l’acceptation de soi. (indicatif présent)
+rassurer | geruststellen | Je peux te rassurer : tu es très belle avec ce short et ce top.
+s’apercevoir de | waarnemen, zien, bemerken | Pas de soucis ! Personne ne s’aperçoit de ces petits défauts. (indicatif présent)
+mettre en avant | in de verf zetten, naar voren brengen, opperen | Sois un peu plus sûr de toi ! N’aie pas peur de mettre en avant tes qualités.
+mettre un coup de pied à | protesteren tegen, zich kanten tegen | Les influenceurs prônant le body positivisme mettent un coup de pied aux diktats de la beauté. (indicatif présent)
+se plier aux exigences | zich naar de eisen schikken | Dans le monde d’aujourd’hui, on doit trop se plier aux exigences dictées par les réseaux sociaux et les médias.
+vouloir du bien à quelqu’un | het goed met iemand voorhebben | Dans la vie, il faut s’entourer de personnes qui te veulent du bien. (indicatif présent)`,
+
+"Défi 1 · Mission 3": `l’audace (f.) | de durf, de stoutmoedigheid | Elle a appris à avoir plus d’audace : elle ose dire ce qu’elle pense.
+la bienveillance | de welwillendheid, de vriendelijkheid | La bienveillance est une valeur indispensable dans la vie et ne coute rien !
+la désapprobation | de afkeuring | Cette fille a un nouveau petit ami, mais elle craint la désapprobation de ses parents.
+l’entraide (f.) | de wederzijdse hulp | Dans chaque relation, l’entraide des deux partenaires est nécessaire.
+une période charnière | een overgangsperiode | L’adolescence est une période charnière dans la vie, dans laquelle un jeune apprend à se connaitre.
+une période transitoire | een overgangsperiode | L’adolescence est la période transitoire entre l’enfance et l’âge adulte.
+le réconfort | de troost, de steun | Quand un ami est mal à l’aise, il faut lui donner du réconfort. L’ami véritable est l’ami des heures difficiles.
+condamnable | verwerpelijk, afkeurenswaardig | As-tu déjà fait des choses condamnables sous l’influence de la pression d’un groupe ?
+impensable | ondenkbaar | Il est impensable que je rompe avec Driss un jour ; je l’aime tellement !
+influençable | beïnvloedbaar | – Qui sont les plus influençables : les garçons ou les filles ? – C’est une question difficile… Je crois que ce sont les garçons qui souffrent le plus de la pression de leurs amis.
+influent, influente | invloedrijk | Les stars sont des personnes très influentes. Elles ont beaucoup de followers sur les réseaux sociaux.
+insoutenable | onverdraaglijk | Il est insoutenable que cette mère décide tout pour ses enfants. Elle les surprotège.
+non désiré, non désirée | ongewild, ongewenst | À cause de la pression du groupe, on finit parfois dans des situations non désirées. Voilà pourquoi il est important de prendre ses propres décisions.
+céder à | toegeven aan, bezwijken onder | Je cède toujours aux vœux de ma sœur. Je me laisse trop influencer par elle. (indicatif présent)
+s’accorder quelque chose | zich iets gunnen | Il est nécessaire de s’accorder du repos. Si tu as envie de rester à la maison pendant le weekend, fais-le !
+s’affirmer | zich doen gelden | Léonie est une fille timide et influençable. Elle a du mal à s’affirmer.
+se démarquer de | afstand nemen van, zich onderscheiden van | Une question personnelle : peux-tu te démarquer de tes amis si tu n’es pas d’accord avec eux ?
+être attentif, attentive à | ergens aandacht voor hebben | Es-tu toujours attentif aux sentiments et aux opinions des autres ? (indicatif présent)
+être reconnu, reconnue | erkend worden | Tout ce qu’il te faut pour être reconnu, c’est un cœur rempli de grâce et une âme faite d’amour.
+être tenté, tentée de | geneigd zijn om | Quand Gilles rencontre quelqu’un de nouveau, il est toujours tenté de faire sa connaissance. (indicatif présent)
+faire partie intégrante de | integraal deel uitmaken van | Découvrir le monde et tester ses limites, ce sont des éléments qui font partie intégrante de l’adolescence. (indicatif présent)
+manquer de confiance en soi | te weinig zelfvertrouwen hebben | Tu es trop incertaine. Tu manques de confiance en toi. (indicatif présent)
+se sentir poussé, poussée (à) | zich gepusht voelen, zich verplicht voelen (om) | Parfois, on se sent poussé par les parents, qui ne veulent rien d’autre que le meilleur pour leur enfant. (indicatif présent)
+s’opposer à l’opinion majoritaire | de meerderheid tegenspreken | Bibi s’oppose souvent à l’opinion majoritaire. Elle ose s’exprimer. (indicatif présent)
+surmonter ses peurs | zijn angsten overwinnen | Afin d’avoir plus de confiance en soi, il faut surmonter ses peurs.
+tisser des liens | banden smeden | Pour avoir quelques bons amis, il est important de tisser des liens.
+à tous les coups | bij elke gelegenheid, telkens | Essayez d’être poli à tous les coups. C’est une valeur si précieuse !`,
+
+"La musique (p. 77)": `un son | een klank |
+un morceau | een stuk, een nummer |
+une chanson | een lied |
+la saison estivale (avec les festivals) | het zomerseizoen (met de festivals) |
+un mélange | een mix, een mengeling |
+un genre/style musical | een muziekgenre/-stijl |
+chanter | zingen |
+se détendre | zich ontspannen |
+se différencier | zich onderscheiden |
+les artistes | de artiesten |
+une icône | een icoon |
+un chanteur, une chanteuse | een zanger, een zangeres |
+un groupe | een groep, een band |
+les instruments (m.) de musique | de muziekinstrumenten |
+jouer de la flute à bec / traversière | blokfluit / dwarsfluit spelen |
+jouer de la clarinette | klarinet spelen |
+jouer de l’accordéon (m.) | accordeon spelen |
+jouer du basson | fagot spelen |
+jouer du hautbois | hobo spelen |
+les cuivres (m.) | de koperblazers |
+jouer du saxophone | saxofoon spelen |
+jouer de la trompette | trompet spelen |
+jouer du trombone | trombone spelen |
+jouer du violon (alto) | viool (altviool) spelen |
+jouer du violoncelle | cello spelen |
+jouer de la contrebasse | contrabas spelen |
+jouer de la guitare (électrique/sèche) | (elektrische/akoestische) gitaar spelen |
+jouer du piano | piano spelen |
+jouer de la harpe | harp spelen |
+jouer de la batterie | drums spelen |`,
+
+"Défi 2 · Mission 1": `un accroissement | een toename | Il y a un accroissement du nombre de jeunes qui accèdent au marché du travail sans diplôme.
+un attentat (terroriste) | een (terroristische) aanslag | Ma mère sait encore très bien où elle était pendant les attentats terroristes de 2016 à Bruxelles.
+l’autonomie (f.) | de zelfstandigheid, de autonomie | Dans cette famille, les parents donnent beaucoup d’autonomie à leurs enfants.
+l’autorité (f.) | de autoriteit, de macht, de bevoegdheid | Quel rebelle ! Il s’oppose toujours à l’autorité.
+un avantage extra-légal | een extralegaal voordeel | Les employés de cette firme ont plusieurs avantages extra-légaux : une voiture de la firme, un ordinateur portable…
+un échec | een mislukking | Après quelques échecs, il s’est lancé dans la mode. Et voilà, il connait un grand succès.
+l’entrepreneuriat (m.) | het ondernemerschap | Il a l’ambition de devenir chef d’entreprise. L’entrepreneuriat, c’est vraiment sa passion.
+une entreprise | een onderneming | J’ai l’ambition de fonder ma propre entreprise.
+l’épanouissement (m.) | de ontwikkeling, de groei, de ontplooiing | Les professeurs à l’école sont là pour stimuler l’épanouissement des élèves.
+un équilibre | een evenwicht | Il faut trouver le bon équilibre entre vie familiale et travail.
+une expansion | een uitbreiding, een expansie | L’expansion d’Internet donne énormément de possibilités à ceux qui veulent lancer un commerce en ligne.
+l’incertitude (f.) | de onzekerheid | Je ne veux pas vivre dans l’incertitude, je veux être sûr que tout se passera bien.
+la loyauté (envers) | de loyaliteit t.o.v., de trouw aan | Le directeur apprécie énormément votre loyauté envers notre entreprise.
+une mise à jour | een update, een actualisering | Il faut que je voie toutes les mises à jour sur Instagram. La fomo, tu dis ?
+le multitasking | het multitasken | Une femme serait douée en multitasking, tandis que les hommes ne savent faire qu’une chose à la fois ? Quel cliché !
+une notification | een kennisgeving, een bericht | Quand j’ai un e-mail ou un message sur WhatsApp, je reçois une notification sur mon smartphone.
+une quête | een zoektocht | Trouver sa voie professionnelle, c’est une véritable quête.
+une reconnaissance | een erkenning | Un jeune qui fait de son mieux a besoin de reconnaissance.
+la sécurité | de veiligheid | Les enfants doivent grandir et se sentir en sécurité.
+un sociologue, une sociologue | een socioloog, sociologe | Les sociologues étudient les différentes générations.
+la stabilité | de stabiliteit | Mes parents m’offrent une vie en sécurité et en stabilité.
+un tiers | een derde | Plus d’un tiers de cette classe sont des filles.
+combatif, combattive | strijdlustig | Les jeunes d’aujourd’hui se montrent très combattifs. Ils savent ce qu’ils veulent, c’est sûr.
+concentré, concentrée | gefocust, geconcentreerd | Quand il y a beaucoup de bruit, je suis moins concentré.
+engagé, engagée (dans) | geëngageerd (in) | Il est très engagé dans le monde du volontariat.
+exceptionnel, exceptionnelle | uitzonderlijk | J’ai vraiment une famille exceptionnelle, qui est toujours prête à m’aider.
+incessant, incessante | onophoudelijk | Ce bruit incessant me rend fou.
+précédent, précédente | vorig | Ce cours-ci était vraiment intéressant, mais je n’ai pas apprécié le cours précédent.
+accéder à | toegang krijgen tot, bereiken, binnengaan | Quelle expérience faut-il avoir pour accéder à ce poste de responsable ?
+aspirer à | streven naar, ambiëren | Les adolescents aspirent à une vie pleine de succès et sans problèmes. (indicatif présent)
+collaborer | samenwerken | On dit que les jeunes sont plutôt individualistes et n’aiment pas collaborer. C’est vrai ?
+décerner | uitreiken | L’université veut décerner un prix au scientifique capable de trouver un traitement effectif contre le cancer.
+embaucher | aanwerven, in dienst nemen | S’il a les compétences nécessaires, le directeur l’embauchera. (futur simple)
+finaliser | afwerken, finaliseren | À un certain moment, il est temps de finaliser le projet.
+recharger | terug (op)laden | Il faut être patient et recharger la page du site Web.
+réclamer | eisen | Il réclame une bonne rémunération pour ce qu’il a fait. (indicatif présent)
+s’engager dans | zich engageren voor, zich inzetten voor | Je voudrais m’engager dans des activités en faveur des jeunes défavorisés.
+succéder à | volgen op, opvolgen | La génération Alpha succède à la génération Z. (indicatif présent)
+traiter | verwerken, behandelen | Mon copain sait lire très vite, donc il traite les informations beaucoup plus facilement que moi. (indicatif présent)
+ressentir un besoin de | nood voelen aan | Les adolescents ressentent un besoin de stabilité et de sécurité. (indicatif présent)
+sauter d’un projet à l’autre | van het ene project op het andere springen | Comme il ne sait pas choisir, il saute toujours d’un projet à l’autre. (indicatif présent)
+avoir de l’expérience (dans) | ervaring hebben (met) | Mon frère a déjà de l’expérience dans le monde de l’entrepreneuriat. (indicatif présent)
+avoir la soif de pouvoir | de drang hebben naar macht, machtsbelust zijn | Parfois, on dit des politiciens qu’ils ont la soif de pouvoir. (indicatif présent)
+avoir un côté rebelle | een rebelse kant hebben | Tu as un côté rebelle ? Tu vas participer à la grève scolaire pour la bonne cause ? (indicatif présent)
+avoir un esprit entrepreneurial développé | een ontwikkelde ondernemersgeest hebben | Mon frère a un esprit entrepreneurial développé : il aime organiser et entreprendre. (indicatif présent)
+être de | bedragen | Le temps de concentration de mon petit frère est de 8 secondes. (indicatif présent)
+être en quête de sens (à) | op zoek zijn naar de zin, betekenis (van) | Les jeunes sont toujours en quête de sens à leur vie. Ils se posent beaucoup de questions. (indicatif présent)
+faire preuve de | bewijzen, blijk geven van | Le nouveau directeur doit faire preuve de ses compétences.
+gagner en importance | aan belang winnen | Le contact personnel gagne de nouveau en importance. (indicatif présent)
+mettre en pratique | in de praktijk brengen | Pendant le stage, les étudiants mettent en pratique ce qu’ils ont appris. (indicatif présent)
+quel(le) que soit | wat ook … is | Quel que soit le problème, je vais essayer de le résoudre.
+rebattre les oreilles à quelqu’un avec quelque chose | iemand de oren afzagen met iets | Les jeunes nous rebattent les oreilles avec leurs opinions sur la vie. (indicatif présent)
+auparavant | vroeger, voorheen | Auparavant, les jeunes ne pouvaient pas utiliser leur GSM à l’école.
+dès lors | zodoende, bijgevolg | Il a obtenu son diplôme, dès lors il a la responsabilité de chercher du travail et d’être indépendant.
+en ce qui concerne | wat … betreft | En ce qui concerne mes études, je sais très bien ce que je veux faire.
+en face-à-face | persoonlijk, face to face | Je n’aime pas les réseaux sociaux. Je préfère les rencontres en face-à-face.
+quiconque | wie dan ook | Il sait mieux parler le russe que quiconque.
+soit … soit | ofwel … ofwel, hetzij … hetzij | J’ai des amis très divers : ils se montrent soit très responsables, soit très passifs.
+sur le tard | later | Ma grand-mère a découvert Internet sur le tard. Elle avait déjà 60 ans quand elle a appris à écrire un e-mail.`
+};
+
+const SETS = {};
+for (const [name, text] of Object.entries(RAW)) {
+  SETS[name] = text.split("\n").map(l => { const p = l.split(" | "); return { fr:p[0].trim(), nl:(p[1]||"").trim(), ex:(p[2]||"").trim() }; });
+}
+const ALL = "Alles";
+SETS[ALL] = Object.values(SETS).flat();
+
+let current = Object.keys(RAW)[0];
+let deck = [], i = 0;
+
+const $ = id => document.getElementById(id);
+const card = $("card");
+
+function loadDeck(name, shuffle) {
+  current = name;
+  deck = SETS[name].slice();
+  if (shuffle) for (let k = deck.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [deck[k], deck[j]] = [deck[j], deck[k]]; }
+  i = 0;
+  renderTabs();
+  show();
+}
+function renderTabs() {
+  const t = $("tabs"); t.innerHTML = "";
+  [...Object.keys(RAW), ALL].forEach(n => {
+    const b = document.createElement("button");
+    b.textContent = n + " (" + SETS[n].length + ")";
+    if (n === current) b.className = "on";
+    b.onclick = () => loadDeck(n, false);
+    t.appendChild(b);
+  });
+}
+function show() {
+  card.classList.remove("flip");
+  const c = deck[i];
+  $("fr").textContent = c.fr;
+  $("nl").textContent = c.nl;
+  $("ex").textContent = c.ex;
+  $("count").textContent = (i + 1) + " / " + deck.length;
+  const isMusic = current.startsWith("La musique");
+  $("note").textContent = isMusic ? "Op deze pagina staan geen vertalingen en zinnen in het boek; de vertalingen zijn aangevuld." : "";
+  // card height: take the taller side
+  card.style.minHeight = "300px";
+}
+function flip() { card.classList.toggle("flip"); }
+function go(d) { i = (i + d + deck.length) % deck.length; show(); }
+
+card.onclick = flip;
+$("flip").onclick = flip;
+$("next").onclick = () => go(1);
+$("prev").onclick = () => go(-1);
+$("shuffle").onclick = () => loadDeck(current, true);
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") go(1);
+  else if (e.key === "ArrowLeft") go(-1);
+  else if (e.key === " " || e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); flip(); }
+});
+loadDeck(current, false);
+</script>
+</body>
+</html>
