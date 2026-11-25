@@ -29,6 +29,9 @@
   .nav { display:flex; gap:10px; margin-top:16px; }
   .nav button { flex:1; padding:14px; font-size:1rem; border-radius:12px; border:1px solid var(--line); background:var(--card); cursor:pointer; }
   .nav button.flipbtn { background:var(--accent); color:#fff; border-color:var(--accent); flex:2; }
+  .hardbtn { width:100%; margin-top:10px; padding:12px; font-size:1rem; border-radius:12px; border:1px solid var(--line); background:var(--card); cursor:pointer; }
+  .hardbtn.on { background:#fff3cd; border-color:#e0b84a; }
+  .hardbtn:disabled { opacity:.5; cursor:default; }
   .note { font-size:.8rem; color:var(--muted); margin-top:12px; min-height:1em; }
 </style>
 </head>
@@ -50,6 +53,7 @@
     <button id="flip" class="flipbtn">Draai</button>
     <button id="next">Volgende →</button>
   </div>
+  <button id="hard" class="hardbtn">☆ Moeilijk</button>
   <div class="note" id="note"></div>
 </main>
 <script>
@@ -242,58 +246,94 @@ const SETS = {};
 for (const [name, text] of Object.entries(RAW)) {
   SETS[name] = text.split("\n").map(l => { const p = l.split(" | "); return { fr:p[0].trim(), nl:(p[1]||"").trim(), ex:(p[2]||"").trim() }; });
 }
-const ALL = "Alles";
+const ALL = "Alles", HARD = "Moeilijk";
 SETS[ALL] = Object.values(SETS).flat();
+
+let hard = new Set();
+try { hard = new Set(JSON.parse(localStorage.getItem("hardCards") || "[]")); } catch (e) {}
+const key = c => c.fr + "|" + c.nl;
+function saveHard() { try { localStorage.setItem("hardCards", JSON.stringify([...hard])); } catch (e) {} }
+function cardsFor(n) {
+  if (n !== HARD) return SETS[n];
+  const seen = new Set();
+  return SETS[ALL].filter(c => { const k = key(c); if (!hard.has(k) || seen.has(k)) return false; seen.add(k); return true; });
+}
 
 let current = Object.keys(RAW)[0];
 let deck = [], i = 0, dir = "fr";
+
+const $ = id => document.getElementById(id);
+const card = $("card");
+
 document.querySelectorAll("#dir button").forEach(b => b.onclick = () => {
   dir = b.dataset.d;
   document.querySelectorAll("#dir button").forEach(x => x.classList.toggle("on", x === b));
   show();
 });
 
-const $ = id => document.getElementById(id);
-const card = $("card");
-
 function loadDeck(name, shuffle) {
   current = name;
-  deck = SETS[name].slice();
-  if (shuffle) for (let k = deck.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [deck[k], deck[j]] = [deck[j], deck[k]]; }
+  deck = cardsFor(name).slice();
+  if (shuffle || name === HARD) for (let k = deck.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [deck[k], deck[j]] = [deck[j], deck[k]]; }
   i = 0;
   renderTabs();
   show();
 }
 function renderTabs() {
   const t = $("tabs"); t.innerHTML = "";
-  [...Object.keys(RAW), ALL].forEach(n => {
+  [...Object.keys(RAW), ALL, HARD].forEach(n => {
     const b = document.createElement("button");
-    b.textContent = n + " (" + SETS[n].length + ")";
+    b.textContent = (n === HARD ? "★ " : "") + n + " (" + cardsFor(n).length + ")";
     if (n === current) b.className = "on";
     b.onclick = () => loadDeck(n, false);
     t.appendChild(b);
   });
 }
 function show() {
+  // draai de kaart direct (zonder animatie) terug, zodat het volgende antwoord nooit even zichtbaar is
+  card.style.transition = "none";
   card.classList.remove("flip");
+  void card.offsetWidth;
+  card.style.transition = "";
+
+  const hb = $("hard");
+  if (deck.length === 0) {
+    $("fr").textContent = "Nog geen moeilijke kaarten. Markeer een kaart met de knop 'Moeilijk'.";
+    $("nl").textContent = ""; $("ex").textContent = "";
+    $("count").textContent = "0 / 0";
+    hb.disabled = true; hb.textContent = "☆ Moeilijk";
+    $("note").textContent = "";
+    return;
+  }
   const c = deck[i];
   $("fr").textContent = dir === "fr" ? c.fr : c.nl;
   $("nl").textContent = dir === "fr" ? c.nl : c.fr;
   $("ex").textContent = c.ex;
   $("count").textContent = (i + 1) + " / " + deck.length;
-  const isMusic = current.startsWith("La musique");
-  $("note").textContent = isMusic ? "Op deze pagina staan geen vertalingen en zinnen in het boek; de vertalingen zijn aangevuld." : "";
-  // card height: take the taller side
-  card.style.minHeight = "300px";
+  hb.disabled = false;
+  const on = hard.has(key(c));
+  hb.textContent = on ? "★ Moeilijk (tik om te verwijderen)" : "☆ Moeilijk";
+  hb.classList.toggle("on", on);
+  $("note").textContent = current.startsWith("La musique") ? "Op deze pagina staan geen vertalingen en zinnen in het boek; de vertalingen zijn aangevuld." : "";
 }
-function flip() { card.classList.toggle("flip"); }
-function go(d) { i = (i + d + deck.length) % deck.length; show(); }
+function flip() { if (deck.length) card.classList.toggle("flip"); }
+function go(d) { if (!deck.length) return; i = (i + d + deck.length) % deck.length; show(); }
 
 card.onclick = flip;
 $("flip").onclick = flip;
 $("next").onclick = () => go(1);
 $("prev").onclick = () => go(-1);
 $("shuffle").onclick = () => loadDeck(current, true);
+$("hard").onclick = () => {
+  if (!deck.length) return;
+  const k = key(deck[i]);
+  if (hard.has(k)) hard.delete(k); else hard.add(k);
+  saveHard();
+  renderTabs();
+  const hb = $("hard"), on = hard.has(k);
+  hb.textContent = on ? "★ Moeilijk (tik om te verwijderen)" : "☆ Moeilijk";
+  hb.classList.toggle("on", on);
+};
 document.addEventListener("keydown", e => {
   if (e.key === "ArrowRight") go(1);
   else if (e.key === "ArrowLeft") go(-1);
