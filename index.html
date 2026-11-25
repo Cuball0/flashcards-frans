@@ -484,7 +484,7 @@ $("next").onclick = () => go(1);
 $("prev").onclick = () => go(-1);
 $("hard").onclick = toggleHard;
 $("star1").onclick = e => { e.stopPropagation(); toggleHard(); };
-seg("dir", "dir", () => { saveSt(); show(); });
+seg("dir", "dir", () => { setSeg("dir", st.dir); saveSt(); show(); });
 seg("show", "show"); seg("order", "order");
 $("reshuffle").onclick = () => { st.order = "shuffle"; rebuild(); };
 $("secAll").onclick = () => { st.secs = [...SECS]; rebuild(); };
